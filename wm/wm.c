@@ -19,6 +19,54 @@ window_manager wm_create() {
   return wm;
 }
 
+void frame(window_manager* wm, Window w, bool created_before_wm) {
+  const unsigned int BORDER_WIDTH = 3;
+  const unsigned long BORDER_COLOR = 0xFF0000;
+  const unsigned long BG_COLOR = 0x00FF;
+
+  XWindowAttributes window_attrs;
+  XGetWindowAttributes(wm->display, w, &window_attrs);
+
+  if(created_before_wm) {
+    if(window_attrs.override_redirect || window_attrs.map_state != IsViewable) {
+      return;
+    }
+  }
+
+  const Window frame = XCreateSimpleWindow(wm->display, wm->root_,
+      window_attrs.x, window_attrs.y, window_attrs.width, window_attrs.height,
+      BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
+
+  XSelectInput(
+      wm->display, frame, SubstructureRedirectMask | SubstructureNotifyMask);
+
+  XAddToSaveSet(wm->display, w);
+  XReparentWindow(wm->display, w, frame, 0, 0);
+  XMapWindow(wm->display, frame);
+  wm->clients_[w] = (Window*)frame;
+
+  // alt + left
+  XGrabButton(wm->display, Button1, Mod1Mask, w, false,
+      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync,
+      GrabModeAsync, None, None);
+
+  // alt + right
+  XGrabButton(wm->display, Button3, Mod1Mask, w, false,
+      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync,
+      GrabModeAsync, None, None);
+
+  // alt + q
+  XGrabButton(wm->display, Button3, Mod1Mask, w, false,
+      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync,
+      GrabModeAsync, None, None);
+
+  XGrabKey(wm->display, XKeysymToKeycode(wm->display, XK_Q), Mod1Mask, w, false,
+      GrabModeAsync, GrabModeAsync);
+
+  XGrabKey(wm->display, XKeysymToKeycode(wm->display, XK_Tab), Mod1Mask, w,
+      false, GrabModeAsync, GrabModeAsync);
+}
+
 void wm_run(window_manager* wm) {
   wm_detected_ = false;
 
@@ -32,6 +80,22 @@ void wm_run(window_manager* wm) {
   }
 
   XSetErrorHandler(&wm_on_x_error);
+
+  XGrabServer(wm->display);
+  Window returned_root, returned_parent;
+  Window* top_level_windows;
+  unsigned int num_top_level_windows;
+  XQueryTree(wm->display, wm->root_, &returned_root, &returned_parent,
+      &top_level_windows, &num_top_level_windows);
+  if(returned_root != wm->root_)
+    return;
+
+  for(unsigned int i = 0; i < num_top_level_windows; ++i) {
+    frame(wm, top_level_windows[i], true);
+  }
+
+  XFree(top_level_windows);
+  XUngrabServer(wm->display);
 
   for(;;) {
     XEvent e;
@@ -54,7 +118,7 @@ void wm_run(window_manager* wm) {
       wm_on_map_notify(e.xmap);
       break;
     case UnmapNotify:
-      wm_on_unmap_notify(e.xunmap);
+      wm_on_unmap_notify(wm, e.xunmap);
       break;
     default:
       printf("ignored event");
@@ -106,50 +170,8 @@ void wm_on_configure_request(window_manager* wm, XConfigureRequestEvent e) {
   XConfigureWindow(wm->display, e.window, e.value_mask, &changes);
 }
 
-void frame(window_manager* wm, Window w) {
-  const unsigned int BORDER_WIDTH = 3;
-  const unsigned long BORDER_COLOR = 0xFF0000;
-  const unsigned long BG_COLOR = 0x00FF;
-
-  XWindowAttributes window_attrs;
-  XGetWindowAttributes(wm->display, w, &window_attrs);
-
-  const Window frame = XCreateSimpleWindow(wm->display, wm->root_,
-      window_attrs.x, window_attrs.y, window_attrs.width, window_attrs.height,
-      BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
-
-  XSelectInput(
-      wm->display, frame, SubstructureRedirectMask | SubstructureNotifyMask);
-
-  XAddToSaveSet(wm->display, w);
-  XReparentWindow(wm->display, w, frame, 0, 0);
-  XMapWindow(wm->display, frame);
-  wm->clients_[w] = (Window*)frame;
-
-  // alt + left
-  XGrabButton(wm->display, Button1, Mod1Mask, w, false,
-      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync,
-      GrabModeAsync, None, None);
-
-  // alt + right
-  XGrabButton(wm->display, Button3, Mod1Mask, w, false,
-      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync,
-      GrabModeAsync, None, None);
-
-  // alt + q
-  XGrabButton(wm->display, Button3, Mod1Mask, w, false,
-      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync,
-      GrabModeAsync, None, None);
-
-  XGrabKey(wm->display, XKeysymToKeycode(wm->display, XK_Q), Mod1Mask, w, false,
-      GrabModeAsync, GrabModeAsync);
-
-  XGrabKey(wm->display, XKeysymToKeycode(wm->display, XK_Tab), Mod1Mask, w,
-      false, GrabModeAsync, GrabModeAsync);
-}
-
 void wm_on_map_request(window_manager* wm, XMapRequestEvent e) {
-  frame(wm, e.window);
+  frame(wm, e.window, false);
 
   return;
 }
@@ -171,6 +193,10 @@ void unframe(window_manager* wm, Window w) {
 void wm_on_unmap_notify(window_manager* wm, XUnmapEvent e) {
   if(wm->clients_[e.window] == NULL)
     return;
+
+  if(e.event == wm->root_) {
+    return;
+  }
 
   unframe(wm, e.window);
 
