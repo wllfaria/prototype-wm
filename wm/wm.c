@@ -120,6 +120,18 @@ void wm_run(window_manager* wm) {
     case UnmapNotify:
       wm_on_unmap_notify(wm, e.xunmap);
       break;
+    case ButtonPress:
+      wm_on_button_press(wm, e.xbutton);
+      break;
+    case ButtonRelease:
+      wm_on_button_release(wm, e.xbutton);
+      break;
+    case KeyPress:
+      wm_on_key_press(wm, e.xkey);
+      break;
+    case KeyRelease:
+      wm_on_key_release(wm, e.xkey);
+      break;
     default:
       printf("ignored event");
     }
@@ -200,5 +212,21 @@ void wm_on_unmap_notify(window_manager* wm, XUnmapEvent e) {
 
   unframe(wm, e.window);
 
+  return;
+}
+
+void wm_on_button_press(window_manager* wm, XButtonPressedEvent e) {
+}
+void wm_on_button_release(window_manager* wm, XButtonReleasedEvent e) {
+  return;
+}
+void wm_on_key_press(window_manager* wm, XKeyPressedEvent e) {
+  printf("pressed alt + Q\n");
+  if((e.state & Mod1Mask) &&
+      (e.keycode == XKeysymToKeycode(wm->display, XK_Q))) {
+    printf("pressed alt + Q\n");
+  }
+}
+void wm_on_key_release(window_manager* wm, XKeyReleasedEvent e) {
   return;
 }

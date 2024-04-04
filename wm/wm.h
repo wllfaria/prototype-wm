@@ -18,3 +18,7 @@ void wm_on_configure_request(window_manager* wm, XConfigureRequestEvent e);
 void wm_on_map_request(window_manager* wm, XMapRequestEvent e);
 void wm_on_map_notify(XMapEvent e);
 void wm_on_unmap_notify(window_manager* wm, XUnmapEvent e);
+void wm_on_button_press(window_manager* wm, XButtonPressedEvent e);
+void wm_on_button_release(window_manager* wm, XButtonReleasedEvent e);
+void wm_on_key_press(window_manager* wm, XKeyPressedEvent e);
+void wm_on_key_release(window_manager* wm, XKeyReleasedEvent e);
