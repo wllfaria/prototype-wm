@@ -1,0 +1,9 @@
+BasedOnStyle: LLVM 
+PointerAlignment: Left
+AlignAfterOpenBracket: DontAlign
+AlignConsecutiveAssignments: false
+IndentWidth: 2
+ColumnLimit: 80
+UseTab: Never
+SpaceBeforeParens: Never
+AllowShortFunctionsOnASingleLine: false
