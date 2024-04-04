@@ -53,6 +53,9 @@ void wm_run(window_manager* wm) {
     case MapNotify:
       wm_on_map_notify(e.xmap);
       break;
+    case UnmapNotify:
+      wm_on_unmap_notify(e.xunmap);
+      break;
     default:
       printf("ignored event");
     }
@@ -152,5 +155,24 @@ void wm_on_map_request(window_manager* wm, XMapRequestEvent e) {
 }
 
 void wm_on_map_notify(XMapEvent e) {
+  return;
+}
+
+void unframe(window_manager* wm, Window w) {
+  const Window* frame = wm->clients_[w];
+  XUnmapWindow(wm->display, *frame);
+  XReparentWindow(wm->display, w, wm->root_, 0, 0);
+  XRemoveFromSaveSet(wm->display, *frame);
+  wm->clients_[w] = NULL;
+
+  return;
+}
+
+void wm_on_unmap_notify(window_manager* wm, XUnmapEvent e) {
+  if(wm->clients_[e.window] == NULL)
+    return;
+
+  unframe(wm, e.window);
+
   return;
 }

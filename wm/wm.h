@@ -17,3 +17,4 @@ void wm_on_reparent_notify(XReparentEvent e);
 void wm_on_configure_request(window_manager* wm, XConfigureRequestEvent e);
 void wm_on_map_request(window_manager* wm, XMapRequestEvent e);
 void wm_on_map_notify(XMapEvent e);
+void wm_on_unmap_notify(window_manager* wm, XUnmapEvent e);
